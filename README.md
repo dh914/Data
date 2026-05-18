@@ -52,3 +52,23 @@ Trigger from the Actions tab via **Run workflow**, or locally:
 pip install -r requirements.txt
 AGENT_REPO=dh914/Agent GH_TOKEN=ghp_xxx python scripts/hourly_routine.py
 ```
+
+## Claude Code routine
+
+This task is also registered as an official Claude Code routine:
+
+- `.claude/commands/hourly-data-routine.md` — slash command `/hourly-data-routine`
+  that runs the script, commits any new files, and pushes.
+- `.claude/hooks/session-start.sh` — installs `requirements.txt` and surfaces
+  `AGENT_REPO` / `INSTRUCTION_LABEL` at the start of every web session.
+- `.claude/settings.json` — wires the hook into `SessionStart`.
+
+To activate the hourly cadence on Claude Code on the web, open this repo's
+**Triggers** page and add a scheduled trigger:
+
+- **Schedule:** `0 * * * *` (hourly)
+- **Branch:** `main`
+- **Prompt:** `/hourly-data-routine`
+
+The GitHub Actions workflow remains as a redundant fallback so the routine
+keeps running even without an active Claude Code trigger.
