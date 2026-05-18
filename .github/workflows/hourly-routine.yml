@@ -1,0 +1,53 @@
+name: Hourly Data Routine
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: hourly-data-routine
+  cancel-in-progress: false
+
+jobs:
+  run-routine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AGENT_REPO: ${{ vars.AGENT_REPO || 'dh914/Agent' }}
+      INSTRUCTION_LABEL: ${{ vars.INSTRUCTION_LABEL || 'data-request' }}
+      GH_TOKEN: ${{ secrets.AGENT_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run hourly routine
+        run: python scripts/hourly_routine.py
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain data/)" ]; then
+            git add data/
+            git commit -m "chore(data): hourly routine results $(date -u +%FT%TZ)"
+            for i in 1 2 3 4; do
+              git push origin HEAD && break
+              sleep $((2 ** i))
+            done
+          else
+            echo "No new data to commit."
+          fi
